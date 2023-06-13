@@ -4,13 +4,14 @@
   "description": "Blocktank is an LSP that allows businesses, apps, or online platforms to integrate, automate, and monetize services from your Lightning node. This includes channel configuration, channel purchases, channel info and more.",
   "scripts": {
     "start-server": "tsc && node dist/startServer.js",
+    "start-listener": "tsc && node dist/startListener.js",
     "build": "rm -rf dist/ && tsc"
   },
   "author": "r32a_",
   "license": "ISC",
   "dependencies": {
-    "@synonymdev/blocktank-lsp-btc-client": "^0.1.0",
-    "@synonymdev/blocktank-lsp-ln2-client": "^0.2.4",
+    "@synonymdev/blocktank-lsp-btc-client": "^0.1.1",
+    "@synonymdev/blocktank-lsp-ln2-client": "^0.2.5",
     "@synonymdev/blocktank-worker2": "^0.2.0",
     "async": "^3.2.0",
     "axios": "^0.21.4",
@@ -22,11 +23,13 @@
     "express": "^4.18.2",
     "grenache-nodejs-http": "^0.7.12",
     "helmet": "^4.6.0",
+    "ioredis": "^5.3.2",
     "ln-service": "^52.14.0",
     "lodash": "^4.17.21",
     "mongodb": "^3.6.5",
     "otplib": "^12.0.1",
     "pm2": "^5.1.0",
+    "redlock": "^5.0.0-beta.2",
     "short-uuid": "^4.2.2",
     "uuid": "^8.3.2"
   },

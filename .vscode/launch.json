@@ -7,56 +7,16 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Server Express",
+            "name": "startListener.ts",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/Start-Express.js"
+            "program": "${workspaceFolder}/src/startListener.ts",
+            "preLaunchTask": "npm: build",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "outputCapture": "std",
         },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "ZeroConf Watcher",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/src/Channel/ZeroConf.js"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "LN-Invoice Watcher",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/src/LN-Invoice-Watch.js"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "GetOrder Worker",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/src/Channel/GetOrder.js"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "LN Channel Opener",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/src/LN-Channel-Opener.js"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "LN Channel Watch",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/src/LN-Channel-Watch.js"
-        }
     ]
 }

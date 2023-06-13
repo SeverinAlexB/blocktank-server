@@ -5,4 +5,8 @@ export interface IConfig {
     dbUrl: string,
     rabbitMqUrl: string,
     slackChannelName?: string,
+    http: {
+        port: number,
+        host: string
+    }
 }

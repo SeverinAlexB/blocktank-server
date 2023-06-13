@@ -35,7 +35,7 @@ describe('Payment.embaddable', () => {
         
         const em = BlocktankDatabase.createEntityManager()
         await em.persistAndFlush(order)
-        console.log()
+        console.log(order)
     });
 
 

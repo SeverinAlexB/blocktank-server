@@ -18,7 +18,13 @@ export class Payment {
     btcAddress: IWatchedAddress
 
     @Property()
+    btcAddressId: string
+
+    @Property()
     bolt11Invoice: IBolt11Invoice
+
+    @Property()
+    bolt11InvoiceId: string
 
     /**
      * Onchain sat that we consider confirmed.
@@ -80,10 +86,12 @@ export class Payment {
             grapeUrl: config.grapeUrl
         })
         payment.btcAddress = await btcClient.createAddress()
+        payment.btcAddressId = payment.btcAddress.id
         const lnClient = new LspLnClient({
             grapeUrl: config.grapeUrl
         })
         payment.bolt11Invoice = await lnClient.createHodlInvoice(amountSat, `Blocktank Channel #${payment.id}`)
+        payment.bolt11InvoiceId = payment.bolt11Invoice.id
         return payment
     }
 }
