@@ -1,13 +1,15 @@
 import Client from "ioredis";
 import Redlock, { ExecutionError, RedlockAbortSignal, ResourceLockedError } from "redlock";
+import { AppConfig } from "../0_config/AppConfig";
 
+const config = AppConfig.get()
 
 export class RedisLock {
     private client: Client;
     private lock: Redlock;
 
     constructor(public retryCount = 1) {
-        this.client = new Client(6379, 'localhost');
+        this.client = new Client(config.redisPath);
 
         this.lock = new Redlock([this.client], {
             retryCount: retryCount

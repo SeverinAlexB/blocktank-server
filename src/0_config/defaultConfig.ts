@@ -9,5 +9,6 @@ export const defaultConfig: IConfig = {
     http: {
         port: 9000,
         host: '127.0.0.1'
-    }
+    },
+    redisPath: 'localhost:6379'
 }

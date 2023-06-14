@@ -8,5 +8,6 @@ export interface IConfig {
     http: {
         port: number,
         host: string
-    }
+    },
+    redisPath: string
 }

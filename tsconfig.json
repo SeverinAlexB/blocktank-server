@@ -17,7 +17,7 @@
   },
   "include": [
     "./src/**/*"
-  ],
+, "src/3_api/routes/v2/.ts"  ],
   "exclude": [
     "node_modules",
     "src/**/*.spec.ts",
