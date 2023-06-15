@@ -4,6 +4,8 @@ import { Payment } from "./Payment.embeddable";
 import { OrderRepository } from "../repositories/OrderRepository";
 import { OrderStateEnum } from "./OrderStateEnum";
 import { IOpenChannelOrder } from "@synonymdev/blocktank-lsp-ln2-client";
+import { getChannelFee } from "../../0_helpers/pricing";
+
 
 
 
@@ -65,4 +67,10 @@ export class Order {
 
     @Property()
     createdAt: Date = new Date();
+
+
+    async calculateChannelFee() {
+        const feeSat = await getChannelFee(this.channelExpiryWeeks, this.lspBalanceSat)
+        this.feeSat = this.clientBalanceSat + feeSat
+    }
 }

@@ -12,7 +12,7 @@ const config = AppConfig.get()
 export class ChannelService {
     
 
-    async open(order: Order, connectionString: string, announceChannel: boolean) {
+    static async open(order: Order, connectionString: string, announceChannel: boolean) {
         if (order.state !== OrderStateEnum.PAID) {
             throw new Error('Order is not in the PAID state. Can not open channel')
         }

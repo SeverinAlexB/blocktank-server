@@ -7,6 +7,20 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "startServer.ts",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/src/startServer.ts",
+            "preLaunchTask": "npm: build",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "outputCapture": "std",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "startListener.ts",
             "skipFiles": [
                 "<node_internals>/**"

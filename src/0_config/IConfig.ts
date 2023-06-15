@@ -9,5 +9,9 @@ export interface IConfig {
         port: number,
         host: string
     },
-    redisPath: string
+    redisPath: string,
+    channels: {
+        orderExpiryS: number,
+        basePriceSat: number
+    }
 }

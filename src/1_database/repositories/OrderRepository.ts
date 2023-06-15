@@ -1,7 +1,11 @@
 import { EntityRepository } from '@mikro-orm/mongodb'; // or any other driver package
 import { Order } from '../entities/Order.entity';
+import { Payment } from '../entities/Payment.embeddable';
+import { getChannelFee } from '../../0_helpers/pricing';
+import { AppConfig } from '../../0_config/AppConfig';
+import { BlocktankDatabase } from '@synonymdev/blocktank-worker2';
 
-
+const config = AppConfig.get()
 
 
 
@@ -30,5 +34,20 @@ export class OrderRepository extends EntityRepository<Order> {
                 bolt11InvoiceId: invoiceId
             }
         })
+    }
+
+    async createByBalance(lspBalanceSat: number, clientBalanceSat: number, channelExpiryWeeks: number, couponCode: string = ""): Promise<Order> {
+        const now = Date.now()
+        const order = new Order()
+        order.channelExpiryWeeks = channelExpiryWeeks
+        order.channelExiresAt = new Date(now + channelExpiryWeeks * 7 * 24 * 60 * 60 * 1000)
+        order.orderExpiresAt = new Date(now + config.channels.orderExpiryS * 1000)
+        order.clientBalanceSat = clientBalanceSat
+        order.lspBalanceSat = lspBalanceSat;
+        order.couponCode = couponCode
+
+        await order.calculateChannelFee()
+        order.payment = await Payment.create(order.feeSat)
+        return this.create(order)
     }
 }

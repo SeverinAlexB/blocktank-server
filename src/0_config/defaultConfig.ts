@@ -10,5 +10,9 @@ export const defaultConfig: IConfig = {
         port: 9000,
         host: '127.0.0.1'
     },
-    redisPath: 'localhost:6379'
+    redisPath: 'localhost:6379',
+    channels: {
+        orderExpiryS: 30*60,
+        basePriceSat: 0
+    }
 }
