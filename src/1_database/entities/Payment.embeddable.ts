@@ -3,16 +3,24 @@ import { IWatchedAddress, LspBtcClient, SuspiciousZeroConfReason } from "@synony
 import { Bolt11InvoiceState, IBolt11Invoice, LspLnClient } from "@synonymdev/blocktank-lsp-ln2-client";
 import * as short from 'short-uuid'
 import { AppConfig } from "../../0_config/AppConfig";
+import { PaymentStateEnum } from "./PaymentStateEnum";
 
 
 const config = AppConfig.get()
 
+/**
+ * Only pay ln OR onchain. It doesnt handle payments to both.
+ */
 @Embeddable()
 export class Payment {
     /**
      * Id which is referenced in the ln description.
      */
+    @Property()
     id: string = short.generate();
+
+    @Property()
+    expectedAmountSat: number;
 
     @Property()
     btcAddress: IWatchedAddress
@@ -25,6 +33,37 @@ export class Payment {
 
     @Property()
     bolt11InvoiceId: string
+
+    @Property({nullable: true})
+    onchainRefundAddress: string
+
+    get state(): PaymentStateEnum {
+        if (this.paidSat === 0) {
+            // Nothing happened yet
+            return PaymentStateEnum.CREATED
+        }
+
+        // Onchain
+        if (this.paidOnchainSat > this.expectedAmountSat) {
+            return PaymentStateEnum.PAID
+        }
+        if (this.paidOnchainSat > 0 && this.paidOnchainSat < this.expectedAmountSat) {
+            return PaymentStateEnum.PARTIALLY_PAID
+        }
+        // Todo: Onchain refunds.
+
+        // Ln
+        if (this.bolt11Invoice.state === Bolt11InvoiceState.PAID) {
+            return PaymentStateEnum.PAID
+        }
+        if (this.bolt11Invoice.state === Bolt11InvoiceState.HOLDING) {
+            return PaymentStateEnum.PAID
+        }
+        if (this.bolt11Invoice.state === Bolt11InvoiceState.CANCELED) {
+            return PaymentStateEnum.REFUNDED
+        }
+        throw new Error('Payment state evaluation error.') // Should not happen.
+    }
 
     /**
      * Onchain sat that we consider confirmed.
@@ -47,6 +86,9 @@ export class Payment {
         return 0
     }
 
+    /**
+     * Includes onchain sat and ln sat.
+     */
     get paidSat(): number {
         return this.paidLnSat + this.paidOnchainSat
     }
@@ -75,13 +117,17 @@ export class Payment {
         }
     }
 
+
+
     /**
      * Create new Payment object.
      * @param amountSat 
      * @returns 
      */
-    static async create(amountSat: number): Promise<Payment> {
+    static async create(amountSat: number, onchainRefundAddress?: string): Promise<Payment> {
         const payment = new Payment()
+        payment.expectedAmountSat = amountSat
+        payment.onchainRefundAddress = onchainRefundAddress
         const btcClient = new LspBtcClient({
             grapeUrl: config.grapeUrl
         })

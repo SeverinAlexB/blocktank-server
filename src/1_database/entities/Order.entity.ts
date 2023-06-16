@@ -4,9 +4,8 @@ import { Payment } from "./Payment.embeddable";
 import { OrderRepository } from "../repositories/OrderRepository";
 import { OrderStateEnum } from "./OrderStateEnum";
 import { IOpenChannelOrder } from "@synonymdev/blocktank-lsp-ln2-client";
-import { getChannelFee } from "../../0_helpers/pricing";
-
-
+import { RedisLock } from "../../2_services/RedisLock";
+import { RedlockAbortSignal } from "redlock";
 
 
 @Entity({
@@ -38,11 +37,19 @@ export class Order {
     @Property()
     channelExiresAt: Date
 
+    get isChannelExpired(): boolean {
+        return this.channelExiresAt.getTime() < Date.now()
+    }
+
     /**
      * When this order expires.
      */
     @Property()
     orderExpiresAt: Date;
+
+    get isOrderExpired(): boolean {
+        return this.orderExpiresAt.getTime() < Date.now()
+    }
 
     /**
      * Affiliate code basically
@@ -68,9 +75,16 @@ export class Order {
     @Property()
     createdAt: Date = new Date();
 
-
-    async calculateChannelFee() {
-        const feeSat = await getChannelFee(this.channelExpiryWeeks, this.lspBalanceSat)
-        this.feeSat = this.clientBalanceSat + feeSat
+    /**
+     * Locks the order exclusively for sensitive operations. Will throw an error if another process locked it.
+     * Use it for sensitive operations that should run exclusively on the order.
+     * @param run 
+     * @returns Returns the return value of the run method.
+     */
+    async lock(run: (signal: RedlockAbortSignal) => any, maxLockDurationMs: number = 60*1000) {
+        return await RedisLock.run(`blocktank-lsp-http-order-${this.id}`, maxLockDurationMs, async (signal) => {
+            return await run(signal)
+        })
     }
+
 }

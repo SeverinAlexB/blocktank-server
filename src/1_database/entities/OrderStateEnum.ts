@@ -3,6 +3,8 @@ export enum OrderStateEnum {
     PAID='paid',
     OPEN='open',
     CLOSED='closed',
-    REFUNDED='refunded',
-    REFUND_AVAILABLE='refundAvailable'
+    EXPIRED='expired', // No payment made, order expired.
+    REFUNDED='refunded', // Payment refunded with LN
+    MANUAL_REFUND='manualRefund' // Onchain refund available manually
+    // REFUND_AVAILABLE='refundAvailable' // Todo: Onchain refunds
 }

@@ -4,6 +4,7 @@ import { Payment } from '../entities/Payment.embeddable';
 import { getChannelFee } from '../../0_helpers/pricing';
 import { AppConfig } from '../../0_config/AppConfig';
 import { BlocktankDatabase } from '@synonymdev/blocktank-worker2';
+import { OrderStateEnum } from '../entities/OrderStateEnum';
 
 const config = AppConfig.get()
 
@@ -36,7 +37,18 @@ export class OrderRepository extends EntityRepository<Order> {
         })
     }
 
-    async createByBalance(lspBalanceSat: number, clientBalanceSat: number, channelExpiryWeeks: number, couponCode: string = ""): Promise<Order> {
+    async findToBeExpired(): Promise<Order[]> {
+        return await this.find({
+            orderExpiresAt: {
+                $lte: new Date()
+            },
+            state: {
+                $in: [OrderStateEnum.CREATED, OrderStateEnum.PAID]
+            }
+        })
+    }
+
+    async createByBalance(lspBalanceSat: number, clientBalanceSat: number, channelExpiryWeeks: number, couponCode: string = "", refundOnchainAddress?: string): Promise<Order> {
         const now = Date.now()
         const order = new Order()
         order.channelExpiryWeeks = channelExpiryWeeks
@@ -45,9 +57,9 @@ export class OrderRepository extends EntityRepository<Order> {
         order.clientBalanceSat = clientBalanceSat
         order.lspBalanceSat = lspBalanceSat;
         order.couponCode = couponCode
-
-        await order.calculateChannelFee()
+        order.feeSat = clientBalanceSat + await getChannelFee(order.channelExpiryWeeks, lspBalanceSat)
         order.payment = await Payment.create(order.feeSat)
+        order.payment.onchainRefundAddress = refundOnchainAddress
         return this.create(order)
     }
 }
