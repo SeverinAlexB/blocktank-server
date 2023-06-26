@@ -140,7 +140,7 @@ export async function setupChannels(express: Express) {
       return res.status(404).send('Not found')
     }
 
-    const refundIsPossible = order.state == OrderStateEnum.REFUND_AVAILABLE || order.state === OrderStateEnum.CREATED || order.state === OrderStateEnum.PAID
+    const refundIsPossible = order.state == OrderStateEnum.MANUAL_REFUND || order.state === OrderStateEnum.CREATED || order.state === OrderStateEnum.PAID
     if (!refundIsPossible) {
       return res.status(412).send('Precondition Failed - Order is not in a state that a refund is still possible.')
     }

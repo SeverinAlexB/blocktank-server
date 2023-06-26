@@ -1,15 +1,32 @@
-import { LspLnClient } from "@synonymdev/blocktank-lsp-ln2-client";
-import { AppConfig } from "../0_config/AppConfig";
+
 import { BlocktankDatabase } from "@synonymdev/blocktank-worker2";
 import { Order } from "../1_database/entities/Order.entity";
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
-import { RedisLock } from "./RedisLock";
-import { ExecutionError } from "redlock";
+import { setIntervalAsync, clearIntervalAsync, SetIntervalAsyncTimer } from 'set-interval-async/fixed';
 
 
-const config = AppConfig.get()
 
 export class OrderExpiredWatcher {
+    private interval: SetIntervalAsyncTimer<any> | null = null
+
+    start() {
+        if (this.isRunning) {
+            throw new Error('Already running.')
+        }
+        this.interval = setIntervalAsync(async () => {
+            await this.updateOrderStates()
+        }, 10*1000)
+    }
+
+    async stop() {
+        if (this.interval) {
+            await clearIntervalAsync(this.interval)
+        }
+    }
+
+    get isRunning() {
+        return this.interval !== null
+    }
     
 
     async updateOrderStates() {
@@ -27,8 +44,10 @@ export class OrderExpiredWatcher {
                 const lockedOrder = await em.findOneOrFail(Order, {
                     id: order.id
                 })
-                const isExipiringStates = lockedOrder.state === OrderStateEnum.CREATED || lockedOrder.state === OrderStateEnum.PAID
-                if (!isExipiringStates) {
+
+                // Check again because it might have changed in the meantime.
+                const isInExipiringState = lockedOrder.state === OrderStateEnum.CREATED || lockedOrder.state === OrderStateEnum.PAID
+                if (!isInExipiringState) {
                     // Not in a state where it should be expired.
                     return;
                 }
@@ -36,13 +55,13 @@ export class OrderExpiredWatcher {
                     lockedOrder.state = OrderStateEnum.EXPIRED; // Client never paid.
                 } else if (lockedOrder.payment.paidLnSat > 0) {
                     await lockedOrder.payment.refund() // Refund LN
-                    lockedOrder.state === OrderStateEnum.REFUNDED
+                    lockedOrder.state = OrderStateEnum.REFUNDED
                 } else if (lockedOrder.payment.paidOnchainSat > 0) {
                     lockedOrder.state = OrderStateEnum.MANUAL_REFUND
                 }
 
                 await em.persistAndFlush(lockedOrder)                
-            }, 10*1000)
+            }, 30*1000)
     }
     
 }

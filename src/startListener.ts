@@ -3,6 +3,7 @@ import { AppConfig } from "./0_config/AppConfig";
 import { BtcListener } from "./2_listeners/BtcListener";
 import { LnListener } from "./2_listeners/LnListener";
 import dbConfig from './mikro-orm.config'
+import { OrderExpiredWatcher } from "./2_services/OrderExpiredWatcher";
 
 const config = AppConfig.get()
 async function main() {
@@ -16,6 +17,8 @@ async function main() {
         connection: rabbitConnection
     })
 
+    const expiredWatcher = new OrderExpiredWatcher()
+
     
 
     try {
@@ -23,6 +26,7 @@ async function main() {
         await rabbitConnection.connect()
         await btcListener.start()
         await lnListener.start()
+        expiredWatcher.start()
         console.log('Start listening for BTC and LN events.')
         console.log('Stop with Ctrl+C')
         await waitOnSigint()
@@ -32,6 +36,7 @@ async function main() {
         console.log('Stopping')
         await lnListener.stop()
         await btcListener.stop()
+        await expiredWatcher.stop()
         await rabbitConnection.disconnect()
         await BlocktankDatabase.close()
     }
