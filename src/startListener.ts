@@ -1,10 +1,11 @@
 import { BlocktankDatabase, RabbitConnection, waitOnSigint } from "@synonymdev/blocktank-worker2";
 import { AppConfig } from "./0_config/AppConfig";
 import { BtcListener } from "./2_listeners/BtcListener";
-import { LnListener } from "./2_listeners/LnListener";
+import { LnInvoiceListener } from "./2_listeners/LnInvoiceListener";
 import dbConfig from './mikro-orm.config'
 import { OrderExpiredWatcher } from "./2_services/OrderExpiredWatcher";
 import { getAppLogger } from "./1_logger/logger";
+import { LnChannelListener } from "./2_listeners/LnChannelListener";
 
 
 const logger = getAppLogger()
@@ -16,7 +17,10 @@ async function main() {
     const btcListener = new BtcListener({
         connection: rabbitConnection
     })
-    const lnListener = new LnListener({
+    const lnInvoiceListener = new LnInvoiceListener({
+        connection: rabbitConnection
+    })
+    const lnChannelListener = new LnChannelListener({
         connection: rabbitConnection
     })
 
@@ -28,7 +32,8 @@ async function main() {
         await BlocktankDatabase.connect(dbConfig)
         await rabbitConnection.connect()
         await btcListener.start()
-        await lnListener.start()
+        await lnInvoiceListener.start()
+        await lnChannelListener.start()
         expiredWatcher.start()
         logger.info('Start listening for BTC and LN events.')
         logger.info('Stop with Ctrl+C')
@@ -37,9 +42,10 @@ async function main() {
         console.error(e)
     } finally {
         logger.info('Stopping')
-        await lnListener.stop()
-        await btcListener.stop()
         await expiredWatcher.stop()
+        await lnInvoiceListener.stop()
+        await btcListener.stop()
+        await lnChannelListener.stop()
         await rabbitConnection.disconnect()
         await BlocktankDatabase.close()
     }

@@ -38,6 +38,7 @@ export class OrderService {
             await order.lock(async (_) => {
                 const channelOrder = await client.orderChannel(connectionString, !announceChannel, order.lspBalanceSat, order.clientBalanceSat)
                 order.channel = channelOrder
+                order.channelOrderId = channelOrder.id
                 order.state = OrderStateEnum.OPEN
                 await em.persistAndFlush(order)
             })

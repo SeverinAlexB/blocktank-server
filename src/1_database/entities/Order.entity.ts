@@ -66,6 +66,9 @@ export class Order {
     @Property({nullable: true})
     channel: IOpenChannelOrder
 
+    @Property({nullable: true}) // Id here otherwise it is not filterable by MongoDb
+    channelOrderId: string
+
     @Embedded(() => Payment, {object: true})
     payment: Payment
 

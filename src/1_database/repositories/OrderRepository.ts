@@ -37,6 +37,12 @@ export class OrderRepository extends EntityRepository<Order> {
         })
     }
 
+    async findByLnChannelOrderId(channelOrderId: string): Promise<Order | null> {
+        return await this.findOne({
+            channelOrderId: channelOrderId
+        })
+    }
+
     async findToBeExpired(): Promise<Order[]> {
         return await this.find({
             orderExpiresAt: {

@@ -10,7 +10,7 @@ import { getAppLogger } from "../1_logger/logger";
 const logger = getAppLogger()
 const config = AppConfig.get()
 
-export class LnListener {
+export class LnInvoiceListener {
     public listener: LspLnEventListener;
     constructor(public options: Partial<ILn2EventListenerOptions> = {}) {
         this.listener = new LspLnEventListener(config.workerName, options)
