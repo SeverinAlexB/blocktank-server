@@ -2,7 +2,9 @@
 import axios from 'axios'
 import BigNumber from 'bignumber.js'
 import { AppConfig } from '../0_config/AppConfig'
+import { getAppLogger } from '../1_logger/logger'
 
+const logger = getAppLogger()
 const config = AppConfig.get()
 
 /**
@@ -26,8 +28,9 @@ export async function getFRR(): Promise<BigNumber | null> {
     }
     return BigNumber(ffr)
   } catch (err) {
-    console.log('Failed to get FRR')
-    console.log(err)
+    logger.error({
+      error: err
+    }, 'Failed to get FRR')
     return null
   }
 }

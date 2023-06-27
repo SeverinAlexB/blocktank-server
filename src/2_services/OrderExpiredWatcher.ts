@@ -3,8 +3,9 @@ import { BlocktankDatabase } from "@synonymdev/blocktank-worker2";
 import { Order } from "../1_database/entities/Order.entity";
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
 import { setIntervalAsync, clearIntervalAsync, SetIntervalAsyncTimer } from 'set-interval-async/fixed';
+import { getAppLogger } from "../1_logger/logger";
 
-
+const logger = getAppLogger()
 
 export class OrderExpiredWatcher {
     private interval: SetIntervalAsyncTimer<any> | null = null
@@ -60,7 +61,8 @@ export class OrderExpiredWatcher {
                     lockedOrder.state = OrderStateEnum.MANUAL_REFUND
                 }
 
-                await em.persistAndFlush(lockedOrder)                
+                await em.persistAndFlush(lockedOrder)
+                logger.info(`Expired order ${order.id}.`)                
             }, 30*1000)
     }
     

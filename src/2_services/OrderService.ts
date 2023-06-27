@@ -3,9 +3,10 @@ import { AppConfig } from "../0_config/AppConfig";
 import { BlocktankDatabase } from "@synonymdev/blocktank-worker2";
 import { Order } from "../1_database/entities/Order.entity";
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
-import { RedisLock } from "./RedisLock";
 import { ExecutionError } from "redlock";
+import { getAppLogger } from "../1_logger/logger";
 
+const logger = getAppLogger()
 
 const config = AppConfig.get()
 
@@ -40,13 +41,24 @@ export class OrderService {
                 order.state = OrderStateEnum.OPEN
                 await em.persistAndFlush(order)
             })
+            logger.info({
+                orderId: order.id,
+                connectionString,
+                announceChannel
+              }, `Opened channel successfully. FundingTx: ${order.channel.txId}`)
 
         } catch (e) {
             if (e instanceof ExecutionError) {
                 // Lock not possible. Maybe we are already opening the channel in a second thread?
                 throw new Error('Already opening channel.')
             }
-            console.log(`Failed to open the channel for order ${order.id}.`, e)
+
+            logger.info({
+                error: e,
+                orderId: order.id,
+                connectionString,
+                announceChannel
+              }, `Failed to open channel of order ${order.id}.`)
             throw e
         }
     }

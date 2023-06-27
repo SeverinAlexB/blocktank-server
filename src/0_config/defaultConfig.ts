@@ -13,6 +13,15 @@ export const defaultConfig: IConfig = {
     redisPath: 'localhost:6379',
     channels: {
         orderExpiryS: 30*60,
-        basePriceSat: 0
+        basePriceSat: 0,
+        minExpiryWeeks: 0,
+        maxExpiryWeeks: 52,
+        minSizeSat: 0,
+        maxSizeSat: Number.MAX_SAFE_INTEGER,
+        maxSizeUsd: Number.MAX_SAFE_INTEGER
+    },
+    logging: {
+        file: undefined,
+        level: 'info'
     }
 }

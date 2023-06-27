@@ -50,10 +50,11 @@ export class OrderRepository extends EntityRepository<Order> {
 
     async createByBalance(lspBalanceSat: number, clientBalanceSat: number, channelExpiryWeeks: number, couponCode: string = "", refundOnchainAddress?: string): Promise<Order> {
         const now = Date.now()
+        const orderExpiryMs = config.channels.orderExpiryS * 1000
         const order = new Order()
         order.channelExpiryWeeks = channelExpiryWeeks
-        order.channelExiresAt = new Date(now + channelExpiryWeeks * 7 * 24 * 60 * 60 * 1000)
-        order.orderExpiresAt = new Date(now + config.channels.orderExpiryS * 1000)
+        order.channelExiresAt = new Date(now + channelExpiryWeeks * 7 * 24 * 60 * 60 * 1000 + orderExpiryMs)
+        order.orderExpiresAt = new Date(now + orderExpiryMs)
         order.clientBalanceSat = clientBalanceSat
         order.lspBalanceSat = lspBalanceSat;
         order.couponCode = couponCode

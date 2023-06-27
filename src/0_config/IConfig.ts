@@ -1,3 +1,5 @@
+import { LevelWithSilent } from 'pino'
+
 
 export interface IConfig {
     workerName: string,
@@ -12,6 +14,15 @@ export interface IConfig {
     redisPath: string,
     channels: {
         orderExpiryS: number,
-        basePriceSat: number
-    }
+        basePriceSat: number,
+        minExpiryWeeks: number,
+        maxExpiryWeeks: number,
+        minSizeSat: number,
+        maxSizeSat: number,
+        maxSizeUsd: number
+    },
+    logging: {
+        file?: string,
+        level: LevelWithSilent
+    },
 }

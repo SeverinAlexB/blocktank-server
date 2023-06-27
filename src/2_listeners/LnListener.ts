@@ -4,9 +4,10 @@ import { BlocktankDatabase } from "@synonymdev/blocktank-worker2";
 import { Order } from "../1_database/entities/Order.entity";
 import { ILn2EventListenerOptions, LspLnClient, LspLnEventListener } from "@synonymdev/blocktank-lsp-ln2-client";
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
+import { getAppLogger } from "../1_logger/logger";
 
 
-
+const logger = getAppLogger()
 const config = AppConfig.get()
 
 export class LnListener {
@@ -40,7 +41,7 @@ export class LnListener {
             order.state = OrderStateEnum.PAID
         }
         await em.persistAndFlush(order)
-        console.log(`Updated bolt11Invoice for order ${order.id}. New paid: ${order.payment.paidSat}sat.`)
+        logger.info(`Updated bolt11Invoice for order ${order.id}. New paid: ${order.payment.paidSat}sat.`)  
     }
 
     async stop() {

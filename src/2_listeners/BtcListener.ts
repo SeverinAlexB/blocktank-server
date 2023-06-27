@@ -3,9 +3,10 @@ import { AppConfig } from "../0_config/AppConfig";
 import { BlocktankDatabase } from "@synonymdev/blocktank-worker2";
 import { Order } from "../1_database/entities/Order.entity";
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
+import { getAppLogger } from "../1_logger/logger";
 
 
-
+const logger = getAppLogger()
 const config = AppConfig.get()
 
 export class BtcListener {
@@ -40,7 +41,7 @@ export class BtcListener {
         }
 
         await em.persistAndFlush(order)
-        console.log(`Updated btcAddress for order ${order.id}. New paid: ${order.payment.paidSat}sat.`)
+        logger.info( `Updated btcAddress for order ${order.id}. New paid: ${order.payment.paidSat}sat.`)  
     }
 
     async stop() {

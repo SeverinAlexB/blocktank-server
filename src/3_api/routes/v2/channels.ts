@@ -6,17 +6,30 @@ import { Order } from '../../../1_database/entities/Order.entity';
 import { OrderStateEnum } from '../../../1_database/entities/OrderStateEnum';
 import { OrderService } from '../../../2_services/OrderService';
 import { parseConnectionString } from '@synonymdev/ln-constr-parser';
+import { getAppLogger } from '../../../1_logger/logger';
+import { AppConfig } from '../../../0_config/AppConfig';
 
-
+const logger = getAppLogger()
+const config = AppConfig.get();
 
 const postChannelsRequest = z.object({
   lspBalanceSat: z.number().int().lte(Number.MAX_SAFE_INTEGER).gte(0),
   clientBalanceSat: z.number().int().lte(Number.MAX_SAFE_INTEGER).gte(0),
-  channelExpiryWeeks: z.number().int().gte(1).lte(53),
+  channelExpiryWeeks: z.number().int().gte(config.channels.minExpiryWeeks).lte(config.channels.maxExpiryWeeks),
   couponCode: z.string().max(512).optional(),
   refundOnchainAddress: z.string().max(512).optional()
 }).refine(obj => {
-  return !(obj.lspBalanceSat < obj.clientBalanceSat)
+  if (obj.lspBalanceSat < obj.clientBalanceSat) {
+    return false
+  }
+  const channelSize = obj.lspBalanceSat + obj.clientBalanceSat
+  if (channelSize < config.channels.minSizeSat) {
+    return false
+  }
+  if (channelSize > config.channels.maxSizeSat) {
+    return false
+  }
+  return true
 }, {
   message: 'clientBalanceSat MUST be less than lspBalanceSat.',
   path: [
@@ -58,6 +71,7 @@ export async function setupChannels(express: Express) {
     const data = req.body
     const order = await repo.createByBalance(data.lspBalanceSat, data.clientBalanceSat, data.channelExpiryWeeks, data.couponCode, data.refundOnchainAddress)
     await em.flush()
+    logger.info(`Created order ${order.id} with lspBalanceSat=${order.lspBalanceSat} and clientBalanceSat=${order.clientBalanceSat}.`)
     return res.status(201).send(order)
   })
 
@@ -110,8 +124,7 @@ export async function setupChannels(express: Express) {
     try {
       await OrderService.openChannel(order, req.body.connectionString, req.body.announceChannel)
     } catch (e) {
-      console.log('Open failed', e)
-      return res.status(500).send(e)
+      return res.status(412).send(e)
     }
 
     order = await repo.findOne({
@@ -145,9 +158,10 @@ export async function setupChannels(express: Express) {
       return res.status(412).send('Precondition Failed - Order is not in a state that a refund is still possible.')
     }
 
-    order.payment.onchainRefundAddress = req.body.onchainAddress
-    await em.persistAndFlush(order)
-    return res.status(200).send(order)
+    return res.status(501).send('Not implemented yet.')
+    // order.payment.onchainRefundAddress = req.body.onchainAddress
+    // await em.persistAndFlush(order)
+    // return res.status(200).send(order)
   })
 
   
