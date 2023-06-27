@@ -32,16 +32,22 @@ export class LnInvoiceListener {
             // No order associated with this id.
             return
         }
-        const client = new LspLnClient({
-            grapeUrl: config.grapeUrl
-        })
+        await order.lock(async (_) => {
+            const lockedOrder = await repo.findOneOrFail({
+                id: order.id
+            })
+            const client = new LspLnClient({
+                grapeUrl: config.grapeUrl
+            })
+    
+            lockedOrder.payment.bolt11Invoice = await client.getInvoice(invoiceId)
+            if (lockedOrder.state === OrderStateEnum.CREATED && lockedOrder.feeSat >= lockedOrder.payment.paidSat) {
+                lockedOrder.state = OrderStateEnum.PAID
+            }
+            await em.persistAndFlush(lockedOrder)
+            logger.info(`Updated bolt11Invoice for order ${lockedOrder.id}. New paid: ${lockedOrder.payment.paidSat}sat.`)  
+        }, 5*1000)
 
-        order.payment.bolt11Invoice = await client.getInvoice(invoiceId)
-        if (order.state === OrderStateEnum.CREATED && order.feeSat >= order.payment.paidSat) {
-            order.state = OrderStateEnum.PAID
-        }
-        await em.persistAndFlush(order)
-        logger.info(`Updated bolt11Invoice for order ${order.id}. New paid: ${order.payment.paidSat}sat.`)  
     }
 
     async stop() {

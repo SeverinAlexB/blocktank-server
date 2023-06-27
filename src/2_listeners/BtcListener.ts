@@ -31,17 +31,23 @@ export class BtcListener {
             // No order associated with this id.
             return
         }
-        const client = new LspBtcClient({
-            grapeUrl: config.grapeUrl
-        })
+        await order.lock(async (_) => {
+            const lockedOrder = await repo.findOneOrFail({
+                id: order.id
+            })
+            const client = new LspBtcClient({
+                grapeUrl: config.grapeUrl
+            })
+    
+            lockedOrder.payment.btcAddress = await client.getAddress(addressId)
+            if (lockedOrder.state === OrderStateEnum.CREATED && lockedOrder.feeSat >= lockedOrder.payment.paidSat) {
+                lockedOrder.state = OrderStateEnum.PAID
+            }
+    
+            await em.persistAndFlush(lockedOrder)
+            logger.info( `Updated btcAddress for order ${lockedOrder.id}. New paid: ${lockedOrder.payment.paidSat}sat.`)   
+        }, 5*1000)
 
-        order.payment.btcAddress = await client.getAddress(addressId)
-        if (order.state === OrderStateEnum.CREATED && order.feeSat >= order.payment.paidSat) {
-            order.state = OrderStateEnum.PAID
-        }
-
-        await em.persistAndFlush(order)
-        logger.info( `Updated btcAddress for order ${order.id}. New paid: ${order.payment.paidSat}sat.`)  
     }
 
     async stop() {
