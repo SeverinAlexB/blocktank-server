@@ -31,17 +31,23 @@ export class LnChannelListener {
             // No order associated with this id.
             return
         }
-        const client = new LspLnClient({
-            grapeUrl: config.grapeUrl
+        await order.lock(async (_) => {
+            const lockedOrder = await repo.findOneOrFail({
+                id: order.id
+            })
+            const client = new LspLnClient({
+                grapeUrl: config.grapeUrl
+            })
+    
+            lockedOrder.channel = await client.getOrderedChannel(channelOrderId)
+            const channelState = lockedOrder.channel.state
+            if (channelState === OpenChannelOrderState.CLOSED) {
+                lockedOrder.state = OrderStateEnum.CLOSED
+            }
+            await em.persistAndFlush(lockedOrder)
+            logger.info(`Updated channelOrder for order ${lockedOrder.id}. New channel state: ${lockedOrder.channel.state}.`)  
         })
 
-        order.channel = await client.getOrderedChannel(channelOrderId)
-        const channelState = order.channel.state
-        if (channelState === OpenChannelOrderState.CLOSED) {
-            order.state = OrderStateEnum.CLOSED
-        }
-        await em.persistAndFlush(order)
-        logger.info(`Updated channelOrder for order ${order.id}. New channel state: ${order.channel.state}.`)  
     }
 
     async stop() {

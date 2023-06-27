@@ -9,6 +9,7 @@ import { parseConnectionString } from '@synonymdev/ln-constr-parser';
 import { getAppLogger } from '../../../1_logger/logger';
 import { AppConfig } from '../../../0_config/AppConfig';
 import exchangeRateApi from '../../../0_exchangeRate/exchangeRateApi';
+import { serializeOrder } from '../../serializeOrder';
 
 const logger = getAppLogger()
 const config = AppConfig.get();
@@ -88,7 +89,8 @@ export async function setupChannels(express: Express) {
     const order = await repo.createByBalance(data.lspBalanceSat, data.clientBalanceSat, data.channelExpiryWeeks, data.couponCode, data.refundOnchainAddress)
     await em.flush()
     logger.info(`Created order ${order.id} with lspBalanceSat=${order.lspBalanceSat} and clientBalanceSat=${order.clientBalanceSat}.`)
-    return res.status(201).send(order)
+    const serializedOrder = serializeOrder(order)
+    return res.status(201).send(serializedOrder)
   })
 
   /**
@@ -109,8 +111,8 @@ export async function setupChannels(express: Express) {
     if (!order) {
       return res.status(404).send('Not found')
     }
-
-    return res.status(200).send(order)
+    const serializedOrder = serializeOrder(order)
+    return res.status(200).send(serializedOrder)
   })
 
   /**
@@ -153,7 +155,8 @@ export async function setupChannels(express: Express) {
     order = await repo.findOne({
       id: id
     })
-    return res.status(200).send(order)
+    const serializedOrder = serializeOrder(order)
+    return res.status(200).send(serializedOrder)
   })
 
   /**
@@ -182,9 +185,7 @@ export async function setupChannels(express: Express) {
     }
 
     return res.status(501).send('Not implemented yet.')
-    // order.payment.onchainRefundAddress = req.body.onchainAddress
-    // await em.persistAndFlush(order)
-    // return res.status(200).send(order)
+
   })
 
   

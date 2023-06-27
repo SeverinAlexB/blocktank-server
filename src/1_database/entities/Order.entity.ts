@@ -58,6 +58,12 @@ export class Order {
     couponCode: string = "";
 
     /**
+     * Discount percentage
+     */
+    @Property()
+    discountPercentage: number = 0;
+
+    /**
      * Fee to pay to get the channel opened. Includes clientBalanceSat.
      */
     @Property()
