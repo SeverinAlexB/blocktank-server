@@ -14,8 +14,8 @@ module.exports = {
         basePriceSat: 0,
         minExpiryWeeks: 0,
         maxExpiryWeeks: 12,
-        minSizeSat: 0,
-        maxSizeSat: Number.MAX_SAFE_INTEGER,
-        maxSizeUsd: Number.MAX_SAFE_INTEGER
+        minSizeSat: 20000,
+        maxSizeSat: 20*1000*1000,
+        maxSizeUsd: 999
     }
 }

@@ -8,6 +8,7 @@ import { OrderService } from '../../../2_services/OrderService';
 import { parseConnectionString } from '@synonymdev/ln-constr-parser';
 import { getAppLogger } from '../../../1_logger/logger';
 import { AppConfig } from '../../../0_config/AppConfig';
+import exchangeRateApi from '../../../0_exchangeRate/exchangeRateApi';
 
 const logger = getAppLogger()
 const config = AppConfig.get();
@@ -19,19 +20,28 @@ const postChannelsRequest = z.object({
   couponCode: z.string().max(512).optional(),
   refundOnchainAddress: z.string().max(512).optional()
 }).refine(obj => {
-  if (obj.lspBalanceSat < obj.clientBalanceSat) {
-    return false
-  }
-  const channelSize = obj.lspBalanceSat + obj.clientBalanceSat
-  if (channelSize < config.channels.minSizeSat) {
-    return false
-  }
-  if (channelSize > config.channels.maxSizeSat) {
-    return false
-  }
-  return true
+  return obj.lspBalanceSat > obj.clientBalanceSat;
 }, {
   message: 'clientBalanceSat MUST be less than lspBalanceSat.',
+  path: [
+    'lspBalanceSat',
+    'clientBalanceSat'
+  ],
+}).refine(obj => {
+
+  const channelSize = obj.lspBalanceSat + obj.clientBalanceSat
+  return channelSize > config.channels.minSizeSat
+}, {
+  message: `Channel size must be at least ${config.channels.minSizeSat}sat.`,
+  path: [
+    'lspBalanceSat',
+    'clientBalanceSat'
+  ],
+}).refine(obj => {
+  const channelSize = obj.lspBalanceSat + obj.clientBalanceSat
+  return channelSize < config.channels.maxSizeSat
+}, {
+  message: `Channel size must be at less or equal ${config.channels.minSizeSat}sat.`,
   path: [
     'lspBalanceSat',
     'clientBalanceSat'
@@ -69,6 +79,12 @@ export async function setupChannels(express: Express) {
     const repo = em.getRepository(Order)
 
     const data = req.body
+
+    const channelSizeUsd = await exchangeRateApi.toUsd(data.clientBalanceSat + data.lspBalanceSat)
+    if (channelSizeUsd > config.channels.maxSizeUsd) {
+      return res.status(400).send(`Channel size too big. Max size is USD${config.channels.maxSizeUsd}.`)
+    }
+
     const order = await repo.createByBalance(data.lspBalanceSat, data.clientBalanceSat, data.channelExpiryWeeks, data.couponCode, data.refundOnchainAddress)
     await em.flush()
     logger.info(`Created order ${order.id} with lspBalanceSat=${order.lspBalanceSat} and clientBalanceSat=${order.clientBalanceSat}.`)
@@ -118,13 +134,20 @@ export async function setupChannels(express: Express) {
     }
 
     if (order.state !== OrderStateEnum.PAID) {
-      return res.status(412).send('Precondition Failed - To open the channel it must be in the "paid" state.')
+      return res.status(412).send('Precondition Failed - To open the channel the order must be in the "paid" state.')
     }
 
     try {
       await OrderService.openChannel(order, req.body.connectionString, req.body.announceChannel)
     } catch (e) {
-      return res.status(412).send(e)
+      if (e?.name === 'ChannelOpenError') {
+        return res.status(412).send({
+          message: e.message,
+          code: e.type,
+          detail: e.detail
+        })
+      }
+      throw e
     }
 
     order = await repo.findOne({
