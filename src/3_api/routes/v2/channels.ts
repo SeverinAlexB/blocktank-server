@@ -52,7 +52,7 @@ const postChannelsRequest = z.object({
 const postChannelOpenRequest = z.object({
   connectionString: z.string().refine(value => {
     try {
-      return parseConnectionString(value)
+      return parseConnectionString(value, {portMandatory: true})
     } catch (e) {
       return false
     }

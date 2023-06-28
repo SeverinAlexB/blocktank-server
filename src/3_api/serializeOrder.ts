@@ -12,6 +12,7 @@ export function serializeOrder(order: Order) {
         lspBalanceSat: order.lspBalanceSat,
         clientBalanceSat: order.clientBalanceSat,
         channelExpiryWeeks: order.channelExpiryWeeks,
+        channelExiresAt: order.channelExiresAt,
         orderExpiresAt: order.orderExpiresAt,
         channel: serializeChannel(order.channel),
         payment: serializePayment(order.payment),
@@ -67,7 +68,7 @@ function serializeBtcAddress(payment: Payment) {
     const address = payment.btcAddress
     return {
         address: address.address,
-        confirmedOnchainSat: payment.paidOnchainSat,
+        confirmedSat: payment.paidOnchainSat,
         payments: address.payments.map(payment => {
             return {
                 amountSat: payment.amountSat,
