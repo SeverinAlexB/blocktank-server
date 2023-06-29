@@ -41,9 +41,6 @@ export class LnInvoiceListener {
             })
     
             lockedOrder.payment.bolt11Invoice = await client.getInvoice(invoiceId)
-            if (lockedOrder.state === OrderStateEnum.CREATED && lockedOrder.feeSat >= lockedOrder.payment.paidSat) {
-                lockedOrder.state = OrderStateEnum.PAID
-            }
             await em.persistAndFlush(lockedOrder)
             logger.info(`Updated bolt11Invoice for order ${lockedOrder.id}. New paid: ${lockedOrder.payment.paidSat}sat.`)  
         }, 5*1000)

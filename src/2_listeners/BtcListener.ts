@@ -40,9 +40,6 @@ export class BtcListener {
             })
     
             lockedOrder.payment.btcAddress = await client.getAddress(addressId)
-            if (lockedOrder.state === OrderStateEnum.CREATED && lockedOrder.feeSat >= lockedOrder.payment.paidSat) {
-                lockedOrder.state = OrderStateEnum.PAID
-            }
     
             await em.persistAndFlush(lockedOrder)
             logger.info( `Updated btcAddress for order ${lockedOrder.id}. New paid: ${lockedOrder.payment.paidSat}sat.`)   

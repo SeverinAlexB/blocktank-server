@@ -10,6 +10,7 @@ import { getAppLogger } from '../../../1_logger/logger';
 import { AppConfig } from '../../../0_config/AppConfig';
 import exchangeRateApi from '../../../0_exchangeRate/exchangeRateApi';
 import { serializeOrder } from '../../serializeOrder';
+import { PaymentStateEnum } from '../../../1_database/entities/PaymentStateEnum';
 
 const logger = getAppLogger()
 const config = AppConfig.get();
@@ -17,7 +18,7 @@ const config = AppConfig.get();
 const postChannelsRequest = z.object({
   lspBalanceSat: z.number().int().lte(Number.MAX_SAFE_INTEGER).gte(0),
   clientBalanceSat: z.number().int().lte(Number.MAX_SAFE_INTEGER).gte(0),
-  channelExpiryWeeks: z.number().int().gte(config.channels.minExpiryWeeks).lte(config.channels.maxExpiryWeeks),
+  channelExpiryWeeks: z.number().int().gt(config.channels.minExpiryWeeks).lte(config.channels.maxExpiryWeeks),
   couponCode: z.string().max(512).optional(),
   refundOnchainAddress: z.string().max(512).optional()
 }).refine(obj => {
@@ -135,7 +136,8 @@ export async function setupChannels(express: Express) {
       return res.status(404).send('Not found')
     }
 
-    if (order.state !== OrderStateEnum.PAID) {
+    const canOpen = order.state === OrderStateEnum.CREATED && order.payment.state === PaymentStateEnum.PAID
+    if (!canOpen) {
       return res.status(412).send('Precondition Failed - To open the channel the order must be in the "paid" state.')
     }
 
@@ -179,7 +181,7 @@ export async function setupChannels(express: Express) {
       return res.status(404).send('Not found')
     }
 
-    const refundIsPossible = order.state == OrderStateEnum.MANUAL_REFUND || order.state === OrderStateEnum.CREATED || order.state === OrderStateEnum.PAID
+    const refundIsPossible = order.payment.state === PaymentStateEnum.REFUND_AVAILABLE
     if (!refundIsPossible) {
       return res.status(412).send('Precondition Failed - Order is not in a state that a refund is still possible.')
     }

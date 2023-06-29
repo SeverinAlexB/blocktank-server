@@ -64,19 +64,14 @@ export class OrderExpiredWatcher {
             })
 
             // Check again because it might have changed in the meantime.
-            const isInExipiringState = lockedOrder.state === OrderStateEnum.CREATED || lockedOrder.state === OrderStateEnum.PAID
+            const isInExipiringState = lockedOrder.state === OrderStateEnum.CREATED
             if (!isInExipiringState) {
                 // Not in a state where it should be expired.
                 return;
             }
-            if (lockedOrder.payment.paidSat === 0) {
-                lockedOrder.state = OrderStateEnum.EXPIRED; // Client never paid.
-            } else if (lockedOrder.payment.paidLnSat > 0) {
-                await lockedOrder.payment.refund() // Refund LN
-                lockedOrder.state = OrderStateEnum.REFUNDED
-            } else if (lockedOrder.payment.paidOnchainSat > 0) {
-                lockedOrder.state = OrderStateEnum.MANUAL_REFUND
-            }
+
+            await lockedOrder.payment.refund()
+            lockedOrder.state = OrderStateEnum.EXPIRED
 
             await em.persistAndFlush(lockedOrder)
             logger.info(`Expired order ${order.id}.`)

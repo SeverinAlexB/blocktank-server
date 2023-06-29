@@ -5,6 +5,7 @@ import { Order } from "../1_database/entities/Order.entity";
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
 import { ExecutionError } from "redlock";
 import { getAppLogger } from "../1_logger/logger";
+import { PaymentStateEnum } from "../1_database/entities/PaymentStateEnum";
 
 const logger = getAppLogger()
 
@@ -14,8 +15,8 @@ export class OrderService {
     
 
     static async openChannel(order: Order, connectionString: string, announceChannel: boolean) {
-        if (order.state !== OrderStateEnum.PAID) {
-            throw new Error('Order is not in the PAID state. Can not open channel')
+        if (order.state !== OrderStateEnum.CREATED || order.payment.state !== PaymentStateEnum.PAID) {
+            throw new Error('Order is not in the right state. Can not open channel')
         }
         const em = BlocktankDatabase.createEntityManager()
 
@@ -40,6 +41,10 @@ export class OrderService {
                 order.channel = channelOrder
                 order.channelOrderId = channelOrder.id
                 order.state = OrderStateEnum.OPEN
+                await em.persistAndFlush(order) // Save so if the settlement failes, we don't open the channel twice at least.
+
+                // Settle payment
+                await order.payment.settle()
                 await em.persistAndFlush(order)
             })
             logger.info({

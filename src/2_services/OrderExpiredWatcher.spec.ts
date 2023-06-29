@@ -4,6 +4,7 @@ import {OrderExpiredWatcher} from './OrderExpiredWatcher'
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
 import { Bolt11InvoiceState, LspLnClient } from "@synonymdev/blocktank-lsp-ln2-client";
 import { SuspiciousZeroConfReason } from "@synonymdev/blocktank-lsp-btc-client";
+import { PaymentStateEnum } from "../1_database/entities/PaymentStateEnum";
 
 jest.setTimeout(60*1000)
 
@@ -67,7 +68,7 @@ describe('OrderExpiredWatcher', () => {
             id: order.id
         })
 
-        expect(expired.state).toEqual(OrderStateEnum.REFUNDED)
+        expect(expired.payment.state).toEqual(PaymentStateEnum.REFUNDED)
     });
 
     test('expire paid onchain', async () => {
@@ -94,7 +95,7 @@ describe('OrderExpiredWatcher', () => {
             id: order.id
         })
 
-        expect(expired.state).toEqual(OrderStateEnum.MANUAL_REFUND)
+        expect(expired.payment.state).toEqual(PaymentStateEnum.REFUND_AVAILABLE)
     });
 
     test('dont expire paid onchain for 1 hr', async () => {

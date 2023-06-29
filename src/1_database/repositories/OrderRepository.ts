@@ -49,7 +49,7 @@ export class OrderRepository extends EntityRepository<Order> {
                 $lte: new Date()
             },
             state: {
-                $in: [OrderStateEnum.CREATED, OrderStateEnum.PAID]
+                $in: [OrderStateEnum.CREATED]
             }
         })
     }
@@ -65,7 +65,8 @@ export class OrderRepository extends EntityRepository<Order> {
         order.lspBalanceSat = lspBalanceSat;
         order.couponCode = couponCode
         order.feeSat = clientBalanceSat + await getChannelFee(order.channelExpiryWeeks, lspBalanceSat)
-        order.payment = await Payment.create(order.feeSat)
+        const accept0Conf = clientBalanceSat === 0
+        order.payment = await Payment.create(order.feeSat, accept0Conf)
         order.payment.onchainRefundAddress = refundOnchainAddress
         return this.create(order)
     }

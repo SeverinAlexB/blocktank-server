@@ -1,6 +1,7 @@
 import { IBolt11Invoice, IOpenChannelOrder } from "@synonymdev/blocktank-lsp-ln2-client";
 import { Order } from "../1_database/entities/Order.entity";
 import { Payment } from "../1_database/entities/Payment.embeddable";
+import { SuspiciousZeroConfReason } from "@synonymdev/blocktank-lsp-btc-client";
 
 
 
@@ -69,14 +70,15 @@ function serializeBtcAddress(payment: Payment) {
     return {
         address: address.address,
         confirmedSat: payment.paidOnchainSat,
-        payments: address.transactions.map(payment => {
+        payments: address.transactions.map(tx => {
             return {
-                amountSat: payment.amountSat,
-                txId: payment.txId,
-                vout: payment.txVout,
-                blockHeight: payment.blockHeight,
-                blockConfirmationCount: payment.blockConfirmationCount,
-                feeRateSatPerVbyte: payment.feeRateSatPerVbyte,
+                amountSat: tx.amountSat,
+                txId: tx.txId,
+                vout: tx.txVout,
+                blockHeight: tx.blockHeight,
+                blockConfirmationCount: tx.blockConfirmationCount,
+                feeRateSatPerVbyte: tx.feeRateSatPerVbyte,
+                zeroConf: payment.accept0Conf && tx.suspicious0ConfReason === SuspiciousZeroConfReason.NONE
             }
         }),
     }

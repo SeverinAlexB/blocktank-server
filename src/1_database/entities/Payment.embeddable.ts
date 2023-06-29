@@ -4,6 +4,7 @@ import { Bolt11InvoiceState, IBolt11Invoice, LspLnClient } from "@synonymdev/blo
 import * as short from 'short-uuid'
 import { AppConfig } from "../../0_config/AppConfig";
 import { PaymentStateEnum } from "./PaymentStateEnum";
+import { PaymentSettlementEnum } from "./PaymentSettlementEnum";
 
 
 const config = AppConfig.get()
@@ -20,6 +21,14 @@ export class Payment {
     id: string = short.generate();
 
     @Property()
+    accept0Conf: boolean
+
+    @Property({
+        type: () => PaymentSettlementEnum
+    })
+    settlementState: PaymentSettlementEnum = PaymentSettlementEnum.NONE
+
+    @Property()
     expectedAmountSat: number;
 
     @Property()
@@ -34,7 +43,7 @@ export class Payment {
     @Property()
     bolt11InvoiceId: string
 
-    @Property({nullable: true})
+    @Property({ nullable: true })
     onchainRefundAddress: string
 
     get state(): PaymentStateEnum {
@@ -42,15 +51,6 @@ export class Payment {
             // Nothing happened yet
             return PaymentStateEnum.CREATED
         }
-
-        // Onchain
-        if (this.paidOnchainSat > this.expectedAmountSat) {
-            return PaymentStateEnum.PAID
-        }
-        if (this.paidOnchainSat > 0 && this.paidOnchainSat < this.expectedAmountSat) {
-            return PaymentStateEnum.PARTIALLY_PAID
-        }
-        // Todo: Onchain refunds.
 
         // Ln
         if (this.bolt11Invoice.state === Bolt11InvoiceState.PAID) {
@@ -62,18 +62,39 @@ export class Payment {
         if (this.bolt11Invoice.state === Bolt11InvoiceState.CANCELED) {
             return PaymentStateEnum.REFUNDED
         }
+
+        // Onchain
+        if (this.settlementState === PaymentSettlementEnum.NONE || this.settlementState === PaymentSettlementEnum.SETTLED) {
+            if (this.paidOnchainSat > this.expectedAmountSat) {
+                return PaymentStateEnum.PAID
+            }
+            if (this.paidOnchainSat > 0 && this.paidOnchainSat < this.expectedAmountSat) {
+                return PaymentStateEnum.PARTIALLY_PAID
+            }
+        } else if (this.settlementState === PaymentSettlementEnum.CANCELED) {
+            return PaymentStateEnum.REFUND_AVAILABLE
+        }
+
+        // Todo: Onchain refunds.
         throw new Error('Payment state evaluation error.') // Should not happen.
     }
 
     /**
      * Onchain sat that we consider confirmed.
+     * Respects the accept0Conf flag.
      */
     get paidOnchainSat(): number {
         if (this.btcAddress.isBlacklisted) {
             return 0
         }
-        const validPayments = this.btcAddress.transactions.filter(payment => payment.blockConfirmationCount >= 1 || payment.suspicious0ConfReason === SuspiciousZeroConfReason.NONE)
-        return validPayments.map(payment => payment.amountSat).reduce((a,b) => a + b, 0)
+        const validPayments = this.btcAddress.transactions.filter(payment => {
+            if (payment.blockConfirmationCount >= 1) {
+                return true
+            }
+
+            return this.accept0Conf && payment.suspicious0ConfReason === SuspiciousZeroConfReason.NONE
+        })
+        return validPayments.map(payment => payment.amountSat).reduce((a, b) => a + b, 0)
     }
 
     /**
@@ -97,6 +118,7 @@ export class Payment {
      * Settles the LN HOLD invoice
      */
     async settle() {
+        this.settlementState = PaymentSettlementEnum.SETTLED
         if (this.bolt11Invoice.state === Bolt11InvoiceState.HOLDING) {
             const lnClient = new LspLnClient({
                 grapeUrl: config.grapeUrl
@@ -109,6 +131,7 @@ export class Payment {
      * Refunds LN HOLD Invoice
      */
     async refund() {
+        this.settlementState = PaymentSettlementEnum.CANCELED
         if (this.bolt11Invoice.state === Bolt11InvoiceState.HOLDING) {
             const lnClient = new LspLnClient({
                 grapeUrl: config.grapeUrl
@@ -124,9 +147,10 @@ export class Payment {
      * @param amountSat 
      * @returns 
      */
-    static async create(amountSat: number, onchainRefundAddress?: string): Promise<Payment> {
+    static async create(amountSat: number, accept0Conf: boolean, onchainRefundAddress?: string): Promise<Payment> {
         const payment = new Payment()
         payment.expectedAmountSat = amountSat
+        payment.accept0Conf = accept0Conf
         payment.onchainRefundAddress = onchainRefundAddress
         const btcClient = new LspBtcClient({
             grapeUrl: config.grapeUrl
