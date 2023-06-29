@@ -75,12 +75,13 @@ describe('OrderExpiredWatcher', () => {
         const repo = em.getRepository(Order)
         const order = await repo.createByBalance(10, 10, 4)
         order.payment.btcAddress = {
-            payments: [{
+            transactions: [{
                 amountSat: 1000,
                 isBlacklisted: false,
                 txId: '123',
                 blockConfirmationCount: 1,
-                suspicious0ConfReason: SuspiciousZeroConfReason.NONE
+                suspicious0ConfReason: SuspiciousZeroConfReason.NONE,
+                createdAt: new Date()
             }] 
         } as any
         order.orderExpiresAt = new Date()
@@ -94,6 +95,33 @@ describe('OrderExpiredWatcher', () => {
         })
 
         expect(expired.state).toEqual(OrderStateEnum.MANUAL_REFUND)
+    });
+
+    test('dont expire paid onchain for 1 hr', async () => {
+        const em = BlocktankDatabase.createEntityManager()
+        const repo = em.getRepository(Order)
+        const order = await repo.createByBalance(10, 10, 4)
+        order.orderExpiresAt = new Date()
+        order.payment.btcAddress = {
+            transactions: [{
+                amountSat: 1000,
+                isBlacklisted: false,
+                txId: '123',
+                blockConfirmationCount: 0,
+                suspicious0ConfReason: SuspiciousZeroConfReason.NONE,
+                createdAt: new Date(order.orderExpiresAt.getTime() -1)
+            }] 
+        } as any
+        await em.persistAndFlush(order)
+
+        const watcher = new OrderExpiredWatcher()
+        await watcher.expireOrder(order)
+
+        const expired = await repo.findOneOrFail({
+            id: order.id
+        })
+
+        expect(expired.state).toEqual(OrderStateEnum.CREATED)
     });
 });
 

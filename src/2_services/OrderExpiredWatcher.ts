@@ -16,7 +16,7 @@ export class OrderExpiredWatcher {
         }
         this.interval = setIntervalAsync(async () => {
             await this.updateOrderStates()
-        }, 10*1000)
+        }, 10 * 1000)
     }
 
     async stop() {
@@ -28,7 +28,7 @@ export class OrderExpiredWatcher {
     get isRunning() {
         return this.interval !== null
     }
-    
+
 
     async updateOrderStates() {
         const em = BlocktankDatabase.createEntityManager()
@@ -40,30 +40,47 @@ export class OrderExpiredWatcher {
     }
 
     async expireOrder(order: Order) {
-            await order.lock(async (_) => {
-                const em = BlocktankDatabase.createEntityManager()
-                const lockedOrder = await em.findOneOrFail(Order, {
-                    id: order.id
-                })
+        const pendingOnchainTx = order.payment.btcAddress.transactions.filter(tx => {
+            if (tx.blockConfirmationCount > 0) {
+                return false
+            }
+            const isTxAfterOrderExpiry = order.orderExpiresAt.getTime() < tx.createdAt.getTime()
+            if (isTxAfterOrderExpiry) {
+                return false
+            }
+            const txSeenSinceS = (Date.now() - tx.createdAt.getTime()) / 1000
+            const _1hr = 60 * 60;
+            return txSeenSinceS < +_1hr
+        })
 
-                // Check again because it might have changed in the meantime.
-                const isInExipiringState = lockedOrder.state === OrderStateEnum.CREATED || lockedOrder.state === OrderStateEnum.PAID
-                if (!isInExipiringState) {
-                    // Not in a state where it should be expired.
-                    return;
-                }
-                if (lockedOrder.payment.paidSat === 0) {
-                    lockedOrder.state = OrderStateEnum.EXPIRED; // Client never paid.
-                } else if (lockedOrder.payment.paidLnSat > 0) {
-                    await lockedOrder.payment.refund() // Refund LN
-                    lockedOrder.state = OrderStateEnum.REFUNDED
-                } else if (lockedOrder.payment.paidOnchainSat > 0) {
-                    lockedOrder.state = OrderStateEnum.MANUAL_REFUND
-                }
+        if (pendingOnchainTx.length > 0) {
+            // Order still has a pending tx attached. Don't expire order for 1 hour max afer expiry date.
+            return
+        }
+        await order.lock(async (_) => {
+            const em = BlocktankDatabase.createEntityManager()
+            const lockedOrder = await em.findOneOrFail(Order, {
+                id: order.id
+            })
 
-                await em.persistAndFlush(lockedOrder)
-                logger.info(`Expired order ${order.id}.`)                
-            }, 30*1000)
+            // Check again because it might have changed in the meantime.
+            const isInExipiringState = lockedOrder.state === OrderStateEnum.CREATED || lockedOrder.state === OrderStateEnum.PAID
+            if (!isInExipiringState) {
+                // Not in a state where it should be expired.
+                return;
+            }
+            if (lockedOrder.payment.paidSat === 0) {
+                lockedOrder.state = OrderStateEnum.EXPIRED; // Client never paid.
+            } else if (lockedOrder.payment.paidLnSat > 0) {
+                await lockedOrder.payment.refund() // Refund LN
+                lockedOrder.state = OrderStateEnum.REFUNDED
+            } else if (lockedOrder.payment.paidOnchainSat > 0) {
+                lockedOrder.state = OrderStateEnum.MANUAL_REFUND
+            }
+
+            await em.persistAndFlush(lockedOrder)
+            logger.info(`Expired order ${order.id}.`)
+        }, 30 * 1000)
     }
-    
+
 }

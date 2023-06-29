@@ -72,7 +72,7 @@ export class Payment {
         if (this.btcAddress.isBlacklisted) {
             return 0
         }
-        const validPayments = this.btcAddress.payments.filter(payment => payment.blockConfirmationCount >= 1 || payment.suspicious0ConfReason === SuspiciousZeroConfReason.NONE)
+        const validPayments = this.btcAddress.transactions.filter(payment => payment.blockConfirmationCount >= 1 || payment.suspicious0ConfReason === SuspiciousZeroConfReason.NONE)
         return validPayments.map(payment => payment.amountSat).reduce((a,b) => a + b, 0)
     }
 

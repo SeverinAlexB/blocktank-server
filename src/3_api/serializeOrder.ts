@@ -69,7 +69,7 @@ function serializeBtcAddress(payment: Payment) {
     return {
         address: address.address,
         confirmedSat: payment.paidOnchainSat,
-        payments: address.payments.map(payment => {
+        payments: address.transactions.map(payment => {
             return {
                 amountSat: payment.amountSat,
                 txId: payment.txId,
