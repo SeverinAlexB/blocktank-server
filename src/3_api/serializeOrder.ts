@@ -71,6 +71,7 @@ function serializeBtcAddress(payment: Payment) {
         address: address.address,
         confirmedSat: payment.paidOnchainSat,
         payments: address.transactions.map(tx => {
+            const isConfirmed = tx.blockConfirmationCount >= 1 || payment.accept0Conf && tx.suspicious0ConfReason === SuspiciousZeroConfReason.NONE
             return {
                 amountSat: tx.amountSat,
                 txId: tx.txId,
@@ -78,7 +79,7 @@ function serializeBtcAddress(payment: Payment) {
                 blockHeight: tx.blockHeight,
                 blockConfirmationCount: tx.blockConfirmationCount,
                 feeRateSatPerVbyte: tx.feeRateSatPerVbyte,
-                zeroConf: payment.accept0Conf && tx.suspicious0ConfReason === SuspiciousZeroConfReason.NONE
+                confirmed: isConfirmed
             }
         }),
     }

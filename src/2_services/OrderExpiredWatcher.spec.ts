@@ -3,7 +3,7 @@ import {Order} from '../1_database/entities/Order.entity'
 import {OrderExpiredWatcher} from './OrderExpiredWatcher'
 import { OrderStateEnum } from "../1_database/entities/OrderStateEnum";
 import { Bolt11InvoiceState, LspLnClient } from "@synonymdev/blocktank-lsp-ln2-client";
-import { SuspiciousZeroConfReason } from "@synonymdev/blocktank-lsp-btc-client";
+import { SuspiciousZeroConfReason, TransactionChange } from "@synonymdev/blocktank-lsp-btc-client";
 import { PaymentStateEnum } from "../1_database/entities/PaymentStateEnum";
 
 jest.setTimeout(60*1000)
@@ -67,7 +67,7 @@ describe('OrderExpiredWatcher', () => {
         const expired = await repo.findOneOrFail({
             id: order.id
         })
-
+        expect(expired.state).toEqual(OrderStateEnum.EXPIRED)
         expect(expired.payment.state).toEqual(PaymentStateEnum.REFUNDED)
     });
 
@@ -82,7 +82,12 @@ describe('OrderExpiredWatcher', () => {
                 txId: '123',
                 blockConfirmationCount: 1,
                 suspicious0ConfReason: SuspiciousZeroConfReason.NONE,
-                createdAt: new Date()
+                createdAt: new Date(),
+                updates: [{
+                    action: TransactionChange.CONFIRMATION_ADDED,
+                    newBlockConfirmationCount: 1,
+                    createdAt: new Date(Date.now() - 1*60*60*1000) // 1hr ago
+                }]
             }] 
         } as any
         order.orderExpiresAt = new Date()
@@ -94,7 +99,7 @@ describe('OrderExpiredWatcher', () => {
         const expired = await repo.findOneOrFail({
             id: order.id
         })
-
+        expect(expired.state).toEqual(OrderStateEnum.EXPIRED)
         expect(expired.payment.state).toEqual(PaymentStateEnum.REFUND_AVAILABLE)
     });
 
@@ -111,6 +116,38 @@ describe('OrderExpiredWatcher', () => {
                 blockConfirmationCount: 0,
                 suspicious0ConfReason: SuspiciousZeroConfReason.NONE,
                 createdAt: new Date(order.orderExpiresAt.getTime() -1)
+            }] 
+        } as any
+        await em.persistAndFlush(order)
+
+        const watcher = new OrderExpiredWatcher()
+        await watcher.expireOrder(order)
+
+        const expired = await repo.findOneOrFail({
+            id: order.id
+        })
+
+        expect(expired.state).toEqual(OrderStateEnum.CREATED)
+    });
+
+    test('dont expire paid onchain if tx confirmed within last 5min', async () => {
+        const em = BlocktankDatabase.createEntityManager()
+        const repo = em.getRepository(Order)
+        const order = await repo.createByBalance(10, 10, 4)
+        order.orderExpiresAt = new Date()
+        order.payment.btcAddress = {
+            transactions: [{
+                amountSat: 1000,
+                isBlacklisted: false,
+                txId: '123',
+                blockConfirmationCount: 1,
+                suspicious0ConfReason: SuspiciousZeroConfReason.NONE,
+                createdAt: new Date(order.orderExpiresAt.getTime() -1),
+                updates: [{
+                    action: TransactionChange.CONFIRMATION_ADDED,
+                    newBlockConfirmationCount: 1,
+                    createdAt: new Date()
+                }]
             }] 
         } as any
         await em.persistAndFlush(order)

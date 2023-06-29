@@ -53,15 +53,21 @@ export class Payment {
         }
 
         // Ln
-        if (this.bolt11Invoice.state === Bolt11InvoiceState.PAID) {
-            return PaymentStateEnum.PAID
+        if (this.bolt11Invoice.state !== Bolt11InvoiceState.PENDING) {
+            // LN payment has been made.
+            if (this.settlementState === PaymentSettlementEnum.CANCELED) { // Use our settlement state
+                return PaymentStateEnum.REFUNDED
+            } else if (this.settlementState === PaymentSettlementEnum.SETTLED) {
+                return PaymentStateEnum.PAID
+            }else if (this.bolt11Invoice.state === Bolt11InvoiceState.PAID) { // Fallback to the bolt11 state
+                return PaymentStateEnum.PAID
+            } else if (this.bolt11Invoice.state === Bolt11InvoiceState.HOLDING) {
+                return PaymentStateEnum.PAID
+            }else if (this.bolt11Invoice.state === Bolt11InvoiceState.CANCELED) {
+                return PaymentStateEnum.REFUNDED
+            }
         }
-        if (this.bolt11Invoice.state === Bolt11InvoiceState.HOLDING) {
-            return PaymentStateEnum.PAID
-        }
-        if (this.bolt11Invoice.state === Bolt11InvoiceState.CANCELED) {
-            return PaymentStateEnum.REFUNDED
-        }
+
 
         // Onchain
         if (this.settlementState === PaymentSettlementEnum.NONE || this.settlementState === PaymentSettlementEnum.SETTLED) {

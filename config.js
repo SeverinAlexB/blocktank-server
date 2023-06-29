@@ -10,7 +10,7 @@ module.exports = {
     },
     redisPath: 'localhost:6379',
     channels: {
-        orderExpiryS: 30*60,
+        orderExpiryS: 1*60,
         basePriceSat: 0,
         minExpiryWeeks: 0,
         maxExpiryWeeks: 12,
