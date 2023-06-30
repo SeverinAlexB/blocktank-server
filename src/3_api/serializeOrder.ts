@@ -2,6 +2,7 @@ import { IBolt11Invoice, IOpenChannelOrder } from "@synonymdev/blocktank-lsp-ln2
 import { Order } from "../1_database/entities/Order.entity";
 import { Payment } from "../1_database/entities/Payment.embeddable";
 import { SuspiciousZeroConfReason } from "@synonymdev/blocktank-lsp-btc-client";
+import { isTxConfirmed } from "../0_helpers/isTxConfirmed";
 
 
 
@@ -13,7 +14,7 @@ export function serializeOrder(order: Order) {
         lspBalanceSat: order.lspBalanceSat,
         clientBalanceSat: order.clientBalanceSat,
         channelExpiryWeeks: order.channelExpiryWeeks,
-        channelExiresAt: order.channelExiresAt,
+        channelExpiresAt: order.channelExiresAt,
         orderExpiresAt: order.orderExpiresAt,
         channel: serializeChannel(order.channel),
         payment: serializePayment(order.payment),
@@ -33,8 +34,6 @@ function serializeChannel(channel?: IOpenChannelOrder) {
         lspNodePubkey: channel.ourPublicKey,
         clientNodePubkey: channel.peerPublicKey,
         announceChannel: !channel.isPrivate,
-        initialClientBalanceSat: channel.pushBalanceSat,
-        initialLspBalanceSat: channel.localBalanceSat,
         fundingTx: {
             id: channel.txId,
             vout: channel.txVout,
@@ -56,9 +55,7 @@ function serializePayment(payment: Payment) {
 
 function serializeBolt11Invoice(invoice: IBolt11Invoice) {
     return {
-        paymentHash: invoice.paymentHash,
         request: invoice.request,
-        nodePubkey: invoice.internalNodePubkey, 
         state: invoice.state,
         expiresAt: invoice.expiresAt,
         updatedAt: invoice.updatedAt,
@@ -70,8 +67,7 @@ function serializeBtcAddress(payment: Payment) {
     return {
         address: address.address,
         confirmedSat: payment.paidOnchainSat,
-        payments: address.transactions.map(tx => {
-            const isConfirmed = tx.blockConfirmationCount >= 1 || payment.accept0Conf && tx.suspicious0ConfReason === SuspiciousZeroConfReason.NONE
+        transactions: address.transactions.map(tx => {
             return {
                 amountSat: tx.amountSat,
                 txId: tx.txId,
@@ -79,7 +75,7 @@ function serializeBtcAddress(payment: Payment) {
                 blockHeight: tx.blockHeight,
                 blockConfirmationCount: tx.blockConfirmationCount,
                 feeRateSatPerVbyte: tx.feeRateSatPerVbyte,
-                confirmed: isConfirmed
+                confirmed: isTxConfirmed(tx, payment.accept0Conf)
             }
         }),
     }

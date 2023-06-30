@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  description: "Blocktank is a Lightning Network service provider (LSP)"
+
+  version: "2.0.0"
+  title: "Blocktank LSP"
+
+
+paths:
+  /api/v2/channels:
+    post:
+      tags:
+      - "Channel Order"
+      summary: "Create order"
+      requestBody:
+          required: true
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/OrderRequest'
+      responses:
+        "201":
+          description: "Created"
+          content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Order"
+        "400":
+          description: "Validation error."
+
+              
+  /api/v2/channels/{id}:
+    get:
+      tags:
+      - Channel Order
+      summary: "Get information about a channel order."
+      parameters:
+        - in: path
+          name: id
+          description: "Order id"
+          required: true
+          schema:
+              type: string
+      responses:
+        "200":
+          description: "Channel information"
+          content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Order"
+        "404":
+          description: "Not found"
+          
+  /api/v2/channels/{id}/open:
+    post:
+      tags:
+      - "Channel Order"
+      summary: "Open a paid channel"
+      parameters:
+        - in: path
+          name: id
+          description: "Order id."
+          required: true
+          schema:
+              type: string
+      responses:
+        "201":
+          description: "Success"
+          content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Order"
+        "400":
+          description: "Validation error"
+        "404":
+          description: "Not found"
+        "412":
+          description: "Channel open failed"
+          content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ChannelOpenError"
+
+
+components:
+    schemas:
+    
+      OrderRequest:
+        type: object
+        required:
+          - lspBalanceSat
+          - clientBalanceSat
+          - channelExpiryWeeks
+        properties:
+          lspBalanceSat:
+            type: integer
+            minimum: 0
+            example: 3000000
+            description: "Initial channel balance in the LSP side."
+          clientBalanceSat:
+            type: integer
+            minimum: 0
+            example: 2000000
+            description: "Initial channel balance in the client side. Must be less than the lspBalanceSat."
+          channelExpiryWeeks:
+            type: integer
+            minimum: 1
+            example: 53
+            description: "Number of weeks the channel is going to be leased for."
+          couponCode:
+            type: string
+            nullable: true
+            example: null
+            description: "Discount code."
+
+
+      Order:
+        type: object
+        properties:
+          id:
+            type: string
+            example: "fa7e6d29-a04d-47ea-8db4-ec05f6b8601c"
+            description: "Id of this order."
+          state:
+            type: string
+            enum:
+              - created
+              - expired
+              - open
+              - closed
+            description: Current state of the order.
+          orderExiresAt:
+            type: string
+            example: "2023-07-06T07:58:39.588Z"
+            description: "Datetime when the order expires."
+          feeSat:
+            type: integer
+            minimum: 0
+            example: 19021
+            description: Fee to be paid.
+          lspBalanceSat:
+            type: integer
+            minimum: 0
+            example: 3000000
+            description: "Initial channel balance in the LSP side."
+          clientBalanceSat:
+            type: integer
+            minimum: 0
+            example: 2000000
+            description: "Initial channel balance in the client side. Must be less than the lspBalanceSat."
+          channelExpiryWeeks:
+            type: integer
+            minimum: 1
+            example: 53
+            description: "Number of weeks the channel is going to be leased for."
+          channelExpiresAt:
+            type: string
+            example: "2023-07-06T07:58:39.588Z"
+            description: "Datetime when the channel expires."
+          couponCode:
+            type: string
+            example: ""
+            description: "Discount code."
+          discountPercentage:
+            type: number
+            example: 0
+            minimum: 0
+            maximum: 100
+            description: "How much discount has been given to this order."
+          channel:
+            $ref: "#/components/schemas/Channel"
+          payment:
+            $ref: "#/components/schemas/Payment"
+          updatedAt:
+            type: string
+            example: "2023-07-06T07:58:39.588Z"
+            description: "When the order has last been updated."
+          createdAt:
+            type: string
+            example: "2023-07-06T07:58:39.588Z"
+            description: "When the order has been created."  
+      
+      Payment:
+        type: object
+        properties:
+          state:
+            type: string
+            example: paid
+            description: State of the payment
+            enum:
+              - created
+              - partiallyPaid
+              - paid
+              - refunded
+              - refundAvailable
+          paidSat:
+            type: integer
+            example: 19021
+            description: Number of satoshi that we received and are confirmed.
+          bolt11Invoice:
+            $ref: "#/components/schemas/Bolt11Invoice"
+          onchain:
+            $ref: "#/components/schemas/BtcAddress"
+          
+      Bolt11Invoice:
+        type: object
+        properties:
+          request:
+            type: string
+            example: "lntb1u1pwz5w78pp5e8w8cr5..."
+            description: Bolt11 invoice to pay the order.
+          state:
+            type: string
+            enum:
+              - pending
+              - holding
+              - paid
+              - canceled
+            description: Payment state of the bolt11 invoice.
+            example: holding
+          expiresAt:
+            type: string
+            example: "2023-07-06T07:58:39.588Z"
+            description: "When the invoice expires."
+          updatedAt:
+            type: string
+            example: "2023-07-06T07:58:39.588Z"
+            description: When this invoice has been updated lastest.
+            
+      BtcAddress:
+        type: object
+        properties:
+          address:
+            type: string
+            example: bcrt1q66jwcerttp8jcu43mlvz0y93v8pf6lxh5xztq3
+            description: Onchain address to pay the fees to.
+          confirmedSat:
+            type: integer
+            example: 1900
+            description: Number of satoshi we see as confirmed.
+          transactions:
+            type: array
+            items:
+              $ref: "#/components/schemas/Transaction"
+            
+          
+      Transaction:
+        type: object
+        properties:
+          amountSat:
+            type: integer
+            description: Number of satoshi the transaction sends.
+            example: 1900
+          txId:
+            type: string
+            description: Transaction id
+            example: fa205519e0eb80f84a6c234b1c7f5a2cc6995eb4d84b6345fab214097d79b38d
+          vout:
+            type: integer
+            description: Output index
+            example: 1
+          blockHeight:
+            type: integer
+            description: Block height this transaction got included.
+            nullable: true
+            example: 600100
+          blockConfirmations:
+            type: integer
+            description: Number of block confirmations.
+            example: 1
+          feeRateSatPerVbyte:
+            type: number
+            description: Fee rate of the transaction in sat per vbyte.
+            example: 21.1
+          confirmed:
+            type: boolean
+            description: If this transaction is seen as confirmed by the LSP.
+            example: true
+            
+          
+          
+          
+      Channel:
+        type: object
+        properties:
+          state:
+            type: string
+            enum:
+              - 'opening'
+              - 'open'
+              - 'closed'
+            example: 'open'
+            description: "Current state of the channel."
+          lspNodePubkey:
+            type: string
+            description: "Pubkey of the LSP node."
+            example: "0296b2db342fcf87ea94d981757fdf4d3e545bd5cef4919f58b5d38dfdd73bf5c9"
+          clientNodePubkey:
+            type: string
+            description: "Pubkey of the client node."
+            example: "0386b2db342fcf87ea94d981757fdf4d3e545bd5cef4919f58b5d38dfdd73bf5a1"
+          announceChannel:
+            type: boolean
+            example: true
+            description: If this channel is announce to the network.
+          shortChannelId:
+            type: string
+            nullable: true
+            example: "792906x599x1"
+            description: Short channel id. Available as soon as the channel got confirmed.
+          fundingTx:
+            type: object
+            nullable: true
+            properties:
+              id:
+                type: string
+                example: "fa205519e0eb80f84a6c234b1c7f5a2cc6995eb4d84b6345fab214097d79b38d"
+                description: Transaction id of the funding transaction.
+              vout:
+                type: integer
+                example: 1
+                description: Output index of the funding transaction.
+          closingTxId:
+            type: string
+            nullable: true
+            example: "fa205519e0eb80f84a6c234b1c7f5a2cc6995eb4d84b6345fab214097d79b38d"
+            description: Closing transaction id. Available when the channel gets closed.
+            
+      ChannelOpenError:
+        type: object
+        properties:
+          message:
+            type: string
+            description: Human readable message
+            example: Channel has been rejected by the client.
+          code:
+            type: string
+            description: Error code.
+            example: CHANNEL_REJECTED_BY_DESTINATION
+            enum:
+              - WRONG_ORDER_STATE
+              - PEER_NOT_REACHABLE
+              - CHANNEL_REJECTED_BY_DESTINATION
+              - CHANNEL_REJECTED_BY_LSP
+              - BLOCKTANK_NOT_READY
+              - UNKNOWN_ERROR
+          details:
+            type: object
+            example: {}
+            description: Additional error information.
+          

@@ -20,6 +20,8 @@ export interface IConfig {
         minSizeSat: number,
         maxSizeSat: number,
         maxSizeUsd: number
+        minPaymentConfirmations: number,
+        minPaymentConfirmationsClientBalance: number,
     },
     logging: {
         file?: string,

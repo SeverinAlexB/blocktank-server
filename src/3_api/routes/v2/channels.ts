@@ -18,7 +18,7 @@ const config = AppConfig.get();
 const postChannelsRequest = z.object({
   lspBalanceSat: z.number().int().lte(Number.MAX_SAFE_INTEGER).gte(0),
   clientBalanceSat: z.number().int().lte(Number.MAX_SAFE_INTEGER).gte(0),
-  channelExpiryWeeks: z.number().int().gt(config.channels.minExpiryWeeks).lte(config.channels.maxExpiryWeeks),
+  channelExpiryWeeks: z.number().int().gte(config.channels.minExpiryWeeks).lte(config.channels.maxExpiryWeeks),
   couponCode: z.string().max(512).optional(),
   refundOnchainAddress: z.string().max(512).optional()
 }).refine(obj => {
@@ -138,7 +138,11 @@ export async function setupChannels(express: Express) {
 
     const canOpen = order.state === OrderStateEnum.CREATED && order.payment.state === PaymentStateEnum.PAID
     if (!canOpen) {
-      return res.status(412).send('Precondition Failed - To open the channel the order must be in the "paid" state.')
+      return res.status(412).send({
+        message: "Order is not in the right state to open the channel.",
+        code: "WRONG_ORDER_STATE",
+        detail: {}
+      })
     }
 
     try {

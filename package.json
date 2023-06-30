@@ -10,7 +10,7 @@
   "author": "r32a_",
   "license": "ISC",
   "dependencies": {
-    "@synonymdev/blocktank-lsp-btc-client": "^0.2.0",
+    "@synonymdev/blocktank-lsp-btc-client": "^0.2.1",
     "@synonymdev/blocktank-lsp-ln2-client": "^0.2.6",
     "@synonymdev/blocktank-worker2": "^0.2.1",
     "@synonymdev/ln-constr-parser": "^1.1.0",

@@ -1,9 +1,0 @@
-{
-  "users":{
-    "username_here": {
-      "token": "secret",
-      "password": "password_hash",
-      "username": "username"
-    }
-  }
-}

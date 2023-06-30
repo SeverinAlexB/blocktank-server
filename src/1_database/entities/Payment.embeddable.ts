@@ -5,6 +5,7 @@ import * as short from 'short-uuid'
 import { AppConfig } from "../../0_config/AppConfig";
 import { PaymentStateEnum } from "./PaymentStateEnum";
 import { PaymentSettlementEnum } from "./PaymentSettlementEnum";
+import { isTxConfirmed } from "../../0_helpers/isTxConfirmed";
 
 
 const config = AppConfig.get()
@@ -93,14 +94,11 @@ export class Payment {
         if (this.btcAddress.isBlacklisted) {
             return 0
         }
-        const validPayments = this.btcAddress.transactions.filter(payment => {
-            if (payment.blockConfirmationCount >= 1) {
-                return true
-            }
 
-            return this.accept0Conf && payment.suspicious0ConfReason === SuspiciousZeroConfReason.NONE
+        const validTx = this.btcAddress.transactions.filter(tx => {
+            return isTxConfirmed(tx, this.accept0Conf)
         })
-        return validPayments.map(payment => payment.amountSat).reduce((a, b) => a + b, 0)
+        return validTx.map(payment => payment.amountSat).reduce((a, b) => a + b, 0)
     }
 
     /**

@@ -21,7 +21,7 @@ afterAll(async () => {
 describe('Payment.embaddable', () => {
 
     test('Create', async () => {
-        const payment = await Payment.create(10)
+        const payment = await Payment.create(10, true)
         expect(payment.bolt11Invoice).toBeDefined()
         const order = new Order()
         order.payment = payment
